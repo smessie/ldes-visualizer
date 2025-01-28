@@ -9,5 +9,7 @@ import MapVisualizer from "./components/MapVisualizer.vue";
 </template>
 
 <style scoped>
-
+#app {
+    font-family: Roboto, Helvetica, Arial, sans-serif;
+}
 </style>
