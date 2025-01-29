@@ -13,8 +13,10 @@
             </MDBCol>
         </MDBRow>
         <div class="mt-3">
-            <small v-if="loading.start && loading.end">Loaded {{ members.length }} members in {{ loading.end - loading.start }}ms.</small>
-            <small v-else-if="loading.start">Loading {{ members.length }} members in {{ loading.now - loading.start }}ms...</small>
+            <small v-if="loading.start && loading.end">Loaded {{ members.length }} members in
+                {{ loading.end - loading.start }}ms.</small>
+            <small v-else-if="loading.start">Loading {{ members.length }} members in {{ loading.now - loading.start
+                }}ms...</small>
         </div>
         <div style="height: 75vh; width: 100%" class="mt-1">
             <l-map ref="map" :zoom="zoom" :center="[47.41322, -1.219482]">
@@ -42,6 +44,7 @@ import "@vuepic/vue-datepicker/dist/main.css";
 import { type Config, replicateLDES } from "ldes-client";
 import type { MapMember } from "@/main.ts";
 import type { Quad } from "@rdfjs/types";
+import { DC } from "@treecg/types";
 
 
 export default defineComponent({
@@ -108,13 +111,15 @@ export default defineComponent({
 
             for await (const element of this.makeAsyncIterable(ldesClient.stream())) {
                 if (element) {
-                    const labelQuad = element.quads.find((quad: Quad) => quad.predicate.value === "http://www.w3.org/2004/02/skos/core#prefLabel");
-                    const centroidQuad = element.quads.find((quad: Quad) => quad.predicate.value === "http://www.w3.org/ns/dcat#centroid");
+                    const labelQuad = element.quads.find((quad: Quad) => quad.predicate.value === "http://www.w3.org/2004/02/skos/core#prefLabel")
+                        || element.quads.find((quad: Quad) => quad.predicate.value === DC.title);
+                    const centroidQuad = element.quads.find((quad: Quad) => quad.predicate.value === "http://www.w3.org/ns/dcat#centroid")
+                        || element.quads.find((quad: Quad) => quad.predicate.value === "http://www.opengis.net/ont/geosparql#asWKT");
 
                     if (centroidQuad) {
                         if (centroidQuad.object.datatype.value === "http://www.opengis.net/ont/geosparql#wktLiteral") {
                             const wkt = centroidQuad.object.value;
-                            const coordinates = wkt.match(/POINT \(([^)]+)\)/)[1].split(" ");
+                            const coordinates = wkt.match(/POINT\s*\(([^)]+)\)/)[1].split(" ");
                             this.members.push({
                                 id: element.id,
                                 label: labelQuad?.object.value,
