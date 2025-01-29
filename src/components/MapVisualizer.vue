@@ -26,18 +26,25 @@
                     name="OpenStreetMap"
                 ></l-tile-layer>
 
-                <l-marker v-for="member of members" :lat-lng="member.coords" :key="member.id.value">
-                    <l-popup>{{ member.label }}</l-popup>
-                </l-marker>
+                <l-marker-cluster-group>
+                    <l-marker v-for="member of members" :lat-lng="member.coords" :key="member.id.value">
+                        <l-popup>{{ member.label }}</l-popup>
+                    </l-marker>
+                </l-marker-cluster-group>
             </l-map>
         </div>
     </MDBContainer>
 </template>
 
 <script lang="ts">
+import L from "leaflet";
+globalThis.L = L;
+
 import { defineComponent } from "vue";
 import "leaflet/dist/leaflet.css";
+import 'vue-leaflet-markercluster/dist/style.css';
 import { LMap, LMarker, LPopup, LTileLayer } from "@vue-leaflet/vue-leaflet";
+import { LMarkerClusterGroup } from 'vue-leaflet-markercluster';
 import { MDBBtn, MDBCol, MDBContainer, MDBInput, MDBRow } from "mdb-vue-ui-kit";
 import VueDatePicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
@@ -54,6 +61,7 @@ export default defineComponent({
         LTileLayer,
         LMarker,
         LPopup,
+        LMarkerClusterGroup,
         MDBContainer,
         MDBRow,
         MDBCol,
