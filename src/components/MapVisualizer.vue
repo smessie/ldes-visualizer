@@ -76,27 +76,13 @@ export default defineComponent({
             this.members = [];
             console.log(`fetching data from ${this.form.ldes}`);
 
-            const timestampTerm = DF.namedNode(DC.modified);
-            const path = pred(timestampTerm);
-
             const config={
                 url: this.form.ldes,
                 polling: false,
             };
             if (this.form.range) {
-                console.log('Setting range condition');
-                const condition = new LeafCondition({
-                    relationType: DF.namedNode(TREE.GreaterThanOrEqualToRelation),
-                    value: DF.literal(new Date(this.form.range[0]).toISOString(), DF.namedNode(XSD.dateTime)),
-                    compareType: 'date',
-                    path: path,
-                    pathQuads: { entry: timestampTerm, quads: [] },
-                    defaultTimezone: 'Z',
-                });
-                condition.range.add(new Date(this.form.range[1]), TREE.LessThanRelation, XSD.dateTime);
-                console.log(new Date(this.form.range[0]).toISOString(), new Date(this.form.range[1]).toISOString());
-
-                (<Partial<Config>>config).condition = condition;
+                (<Partial<Config>>config).after = new Date(this.form.range[0]);
+                (<Partial<Config>>config).before = new Date(this.form.range[1]);
             }
 
             const ldesClient = replicateLDES(config);
