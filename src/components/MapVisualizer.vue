@@ -19,7 +19,8 @@
                 }}ms...</small>
         </div>
         <div style="height: 75vh; width: 100%" class="mt-1">
-            <l-map ref="map" :zoom="zoom" :center="[47.41322, -1.219482]" :options="{ preferCanvas: true, chunkLoading: true }">
+            <l-map ref="map" :zoom="zoom" :center="[47.41322, -1.219482]"
+                   :options="{ preferCanvas: true, chunkLoading: true }">
                 <l-tile-layer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     layer-type="base"
@@ -38,20 +39,17 @@
 
 <script lang="ts">
 import L from "leaflet";
-globalThis.L = L;
-
 import { defineComponent } from "vue";
 import "leaflet/dist/leaflet.css";
-import 'vue-leaflet-markercluster/dist/style.css';
-import { LMap, LCircleMarker, LPopup, LTileLayer } from "@vue-leaflet/vue-leaflet";
-import { LMarkerClusterGroup } from 'vue-leaflet-markercluster';
+import "vue-leaflet-markercluster/dist/style.css";
+import { LCircleMarker, LMap, LPopup, LTileLayer } from "@vue-leaflet/vue-leaflet";
+import { LMarkerClusterGroup } from "vue-leaflet-markercluster";
 import { MDBBtn, MDBCol, MDBContainer, MDBInput, MDBRow } from "mdb-vue-ui-kit";
 import VueDatePicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
-import { type Config, replicateLDES } from "ldes-client";
-import type { MapMember } from "@/main.ts";
-import type { Quad } from "@rdfjs/types";
-import { DC } from "@treecg/types";
+import type { MapMember, WorkerMessage } from "@/main.ts";
+
+globalThis.L = L;
 
 
 export default defineComponent({
@@ -74,7 +72,7 @@ export default defineComponent({
             zoom: 2,
             form: {
                 ldes: "",
-                range: null,
+                range: null as [Date, Date] | null,
             },
             members: [] as MapMember[],
             loading: {
@@ -82,6 +80,7 @@ export default defineComponent({
                 end: undefined as number | undefined,
                 now: Date.now(),
             },
+            worker: undefined as Worker | undefined,
         };
     },
     methods: {
@@ -92,16 +91,8 @@ export default defineComponent({
             this.members = [];
             this.loading.start = undefined;
             this.loading.end = undefined;
+            this.worker?.terminate();
             console.log(`fetching data from ${this.form.ldes}`);
-
-            const config = {
-                url: this.form.ldes,
-                polling: false,
-            };
-            if (this.form.range) {
-                (<Partial<Config>>config).after = new Date(this.form.range[0]);
-                (<Partial<Config>>config).before = new Date(this.form.range[1]);
-            }
 
             this.loading.start = Date.now();
             this.loading.now = Date.now();
@@ -115,48 +106,34 @@ export default defineComponent({
                 }
             }, 100);
 
-            const ldesClient = replicateLDES(config);
+            this.worker = new Worker(new URL("../assets/fetchDataWorker.ts", import.meta.url), {
+                type: "module",
+            });
 
-            for await (const element of this.makeAsyncIterable(ldesClient.stream())) {
-                if (element) {
-                    const labelQuad = element.quads.find((quad: Quad) => quad.predicate.value === "http://www.w3.org/2004/02/skos/core#prefLabel")
-                        || element.quads.find((quad: Quad) => quad.predicate.value === DC.title);
-                    const centroidQuad = element.quads.find((quad: Quad) => quad.predicate.value === "http://www.w3.org/ns/dcat#centroid")
-                        || element.quads.find((quad: Quad) => quad.predicate.value === "http://www.opengis.net/ont/geosparql#asWKT");
+            let bufferNewMembers = [] as MapMember[];
+            let lastBufferAdded = 0;
+            this.worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+                if (event.data.member) {
+                    bufferNewMembers.push(event.data.member);
 
-                    if (centroidQuad) {
-                        if (centroidQuad.object.datatype.value === "http://www.opengis.net/ont/geosparql#wktLiteral") {
-                            const wkt = centroidQuad.object.value;
-                            const coordinates = wkt.match(/POINT\s*\(([^)]+)\)/)[1].split(" ");
-                            this.members.push({
-                                id: element.id,
-                                label: labelQuad?.object.value,
-                                modified: element.timestamp,
-                                coords: [parseFloat(coordinates[1]), parseFloat(coordinates[0])],
-                            });
-                        }
+                    // Only add the new members to the DOM every second
+                    if (lastBufferAdded + 1000 < Date.now()) {
+                        this.members.push(...bufferNewMembers);
+                        bufferNewMembers = [];
+                        lastBufferAdded = Date.now();
                     }
                 }
-            }
-
-            this.loading.end = Date.now();
-        },
-        makeAsyncIterable(stream: ReadableStream) {
-            const reader = stream.getReader();
-            return {
-                [Symbol.asyncIterator]() {
-                    return {
-                        async next() {
-                            const { done, value } = await reader.read();
-                            if (done) {
-                                reader.releaseLock();
-                                return { done: true };
-                            }
-                            return { done: false, value };
-                        },
-                    };
-                },
+                if (event.data.end) {
+                    this.members.push(...bufferNewMembers);
+                    bufferNewMembers = [];
+                    this.loading.end = event.data.end;
+                }
             };
+
+            this.worker.postMessage({
+                url: this.form.ldes,
+                range: this.form.range ? [this.form.range[0].toISOString(), this.form.range[1].toISOString()] : undefined,
+            });
         },
     },
 });

@@ -21,3 +21,8 @@ export type MapMember = {
     modified: Date;
     coords: [number, number];
 }
+
+export type WorkerMessage = {
+    member?: MapMember,
+    end?: number,
+}
