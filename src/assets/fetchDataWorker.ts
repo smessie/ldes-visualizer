@@ -1,5 +1,4 @@
-import type { Config } from "ldes-client";
-import { replicateLDES } from "ldes-client";
+import { type Config, enhanced_fetch, replicateLDES } from "ldes-client";
 import type { Quad } from "@rdfjs/types";
 import { DC } from "@treecg/types";
 import type { WorkerMessage } from "@/main.ts";
@@ -15,6 +14,9 @@ async function fetchData(url: string, range: [Date, Date] | undefined, postMessa
     const config = {
         url: url,
         polling: false,
+        fetch: enhanced_fetch({
+            safe: true,
+        }),
     };
     if (range) {
         (<Partial<Config>>config).after = new Date(range[0]);
