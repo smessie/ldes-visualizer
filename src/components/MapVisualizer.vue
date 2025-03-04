@@ -19,7 +19,7 @@
                 }}ms...</small>
         </div>
         <div style="height: 75vh; width: 100%" class="mt-1">
-            <l-map ref="map" :zoom="zoom" :center="[47.41322, -1.219482]">
+            <l-map ref="map" :zoom="zoom" :center="[47.41322, -1.219482]" :options="{ preferCanvas: true, chunkLoading: true }">
                 <l-tile-layer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     layer-type="base"
@@ -27,9 +27,9 @@
                 ></l-tile-layer>
 
                 <l-marker-cluster-group>
-                    <l-marker v-for="member of members" :lat-lng="member.coords" :key="member.id.value">
+                    <l-circle-marker v-for="member of members" :lat-lng="member.coords" :key="member.id.value">
                         <l-popup>{{ member.label }}</l-popup>
-                    </l-marker>
+                    </l-circle-marker>
                 </l-marker-cluster-group>
             </l-map>
         </div>
@@ -43,7 +43,7 @@ globalThis.L = L;
 import { defineComponent } from "vue";
 import "leaflet/dist/leaflet.css";
 import 'vue-leaflet-markercluster/dist/style.css';
-import { LMap, LMarker, LPopup, LTileLayer } from "@vue-leaflet/vue-leaflet";
+import { LMap, LCircleMarker, LPopup, LTileLayer } from "@vue-leaflet/vue-leaflet";
 import { LMarkerClusterGroup } from 'vue-leaflet-markercluster';
 import { MDBBtn, MDBCol, MDBContainer, MDBInput, MDBRow } from "mdb-vue-ui-kit";
 import VueDatePicker from "@vuepic/vue-datepicker";
@@ -59,7 +59,7 @@ export default defineComponent({
     components: {
         LMap,
         LTileLayer,
-        LMarker,
+        LCircleMarker,
         LPopup,
         LMarkerClusterGroup,
         MDBContainer,
